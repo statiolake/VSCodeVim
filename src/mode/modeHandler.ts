@@ -31,11 +31,15 @@ import {
 } from './../transformations/transformations';
 import { Mode, ModeName, VSCodeVimCursorType } from './mode';
 import { Logger } from '../util/logger';
+import { ImSwitcher } from './imswitch';
 
 export class ModeHandler implements vscode.Disposable {
   private _disposables: vscode.Disposable[] = [];
   private _modes: Mode[];
   private _remappers: Remappers;
+
+  private _imswitcher: ImSwitcher;
+  private _previousMode: ModeName | undefined;
 
   public vimState: VimState;
 
@@ -58,6 +62,9 @@ export class ModeHandler implements vscode.Disposable {
       new modes.SurroundInputMode(),
       new modes.DisabledMode(),
     ];
+
+    this._imswitcher = new ImSwitcher();
+    this._previousMode = ModeName.Normal;
 
     this.vimState = new VimState(vscode.window.activeTextEditor!);
     this.setCurrentMode(configuration.startInInsertMode ? ModeName.Insert : ModeName.Normal);
@@ -256,6 +263,11 @@ export class ModeHandler implements vscode.Disposable {
   }
 
   private setCurrentMode(modeName: ModeName): void {
+    // なぜか this.vimState.currentMode はすでに書き変わっている節が濃厚で...
+    if (this._previousMode !== undefined && this._previousMode !== modeName) {
+      this._imswitcher.modeChanged(this._previousMode, modeName);
+    }
+    this._previousMode = modeName;
     this.vimState.currentMode = modeName;
     for (let mode of this._modes) {
       mode.isActive = mode.name === modeName;
