@@ -263,7 +263,6 @@ export class ModeHandler implements vscode.Disposable {
   }
 
   private setCurrentMode(modeName: ModeName): void {
-    // なぜか this.vimState.currentMode はすでに書き変わっている節が濃厚で...
     if (this._previousMode !== undefined && this._previousMode !== modeName) {
       this._imswitcher.modeChanged(this._previousMode, modeName);
     }
