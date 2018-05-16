@@ -50,8 +50,10 @@ suite('Remapper', () => {
 
     // act
     let actual = false;
+    let dummy;
     try {
-      actual = await remapper.sendKey(['j', 'j'], modeHandler, modeHandler.vimState);
+      const res = await remapper.sendKey(['j', 'j'], modeHandler, modeHandler.vimState);
+      actual = res.handled;
     } catch (e) {
       assert.fail(e);
     }
@@ -69,7 +71,8 @@ suite('Remapper', () => {
     // act
     let actual = false;
     try {
-      actual = await remapper.sendKey([leaderKey, 'w'], modeHandler, modeHandler.vimState);
+      const res = await remapper.sendKey([leaderKey, 'w'], modeHandler, modeHandler.vimState);
+      actual = res.handled;
     } catch (e) {
       assert.fail(e);
     }

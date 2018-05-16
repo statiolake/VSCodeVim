@@ -314,6 +314,7 @@ export class ModeHandler implements vscode.Disposable {
       const withinTimeout = now - this.vimState.lastKeyPressedTimestamp < configuration.timeout;
 
       let handled = false;
+      let found = false;
 
       /**
        * Check that
@@ -327,13 +328,15 @@ export class ModeHandler implements vscode.Disposable {
         (withinTimeout || keys.length === 1) &&
         !Globals.isTesting
       ) {
-        handled = await this._remappers.sendKey(keys, this, this.vimState);
+        let res = await this._remappers.sendKey(keys, this, this.vimState);
+        found = res.found;
+        handled = res.handled;
       }
 
       if (handled) {
         this.vimState.recordedState.resetCommandList();
       } else {
-        this.vimState = await this.handleKeyEventHelper(key, this.vimState);
+        this.vimState = await this.handleKeyEventHelper(key, this.vimState, found);
       }
     } catch (e) {
       console.error(e);
@@ -346,7 +349,11 @@ export class ModeHandler implements vscode.Disposable {
     return true;
   }
 
-  private async handleKeyEventHelper(key: string, vimState: VimState): Promise<VimState> {
+  private async handleKeyEventHelper(
+    key: string,
+    vimState: VimState,
+    isDisabledKey: boolean
+  ): Promise<VimState> {
     // Just nope right out of here.
     if (vscode.window.activeTextEditor !== this.vimState.editor) {
       return this.vimState;
@@ -360,7 +367,7 @@ export class ModeHandler implements vscode.Disposable {
     recordedState.actionKeys.push(key);
     vimState.keyHistory.push(key);
 
-    let result = Actions.getRelevantAction(recordedState.actionKeys, vimState);
+    let result = Actions.getRelevantAction(recordedState.actionKeys, vimState, isDisabledKey);
     switch (result) {
       case KeypressState.NoPossibleMatch:
         if (!this._remappers.isPotentialRemap) {

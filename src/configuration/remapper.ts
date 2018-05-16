@@ -7,6 +7,7 @@ import { ModeName } from '../mode/mode';
 import { ModeHandler } from '../mode/modeHandler';
 import { VimState } from './../state/vimState';
 import { IKeyRemapping } from './iconfiguration';
+import { assert } from 'console';
 
 export class Remappers implements IRemapper {
   private remappers: IRemapper[];
@@ -28,17 +29,29 @@ export class Remappers implements IRemapper {
     keys: string[],
     modeHandler: ModeHandler,
     vimState: VimState
-  ): Promise<boolean> {
+  ): Promise<{ found: boolean; handled: boolean }> {
+    let found = false;
     let handled = false;
     for (let remapper of this.remappers) {
-      handled = handled || (await remapper.sendKey(keys, modeHandler, vimState));
+      let res = await remapper.sendKey(keys, modeHandler, vimState);
+      if (res.handled) {
+        found = true;
+        handled = res.handled;
+        break;
+      } else {
+        found = found || res.found;
+      }
     }
-    return handled;
+    return { found: found, handled: handled };
   }
 }
 
 interface IRemapper {
-  sendKey(keys: string[], modeHandler: ModeHandler, vimState: VimState): Promise<boolean>;
+  sendKey(
+    keys: string[],
+    modeHandler: ModeHandler,
+    vimState: VimState
+  ): Promise<{ found: boolean; handled: boolean }>;
   readonly isPotentialRemap: boolean;
 }
 
@@ -65,11 +78,11 @@ class Remapper implements IRemapper {
     keys: string[],
     modeHandler: ModeHandler,
     vimState: VimState
-  ): Promise<boolean> {
+  ): Promise<{ found: boolean; handled: boolean }> {
     this._isPotentialRemap = false;
 
     if (this._remappedModes.indexOf(vimState.currentMode) === -1) {
-      return false;
+      return { found: false, handled: false };
     }
 
     let remapping: IKeyRemapping | undefined;
@@ -81,14 +94,21 @@ class Remapper implements IRemapper {
      * with extraneous keystrokes (eg. "hello world jj").
      * In other modes, we have to precisely match the entire keysequence.
      */
+    let found = false;
     if (this._remappedModes.indexOf(ModeName.Insert) === -1) {
       remapping = _.find(this._remappings, map => {
-        return map.before.join('') === keys.join('');
+        const [found_this, doesMatch] = this._doesMatch(map, keys);
+        found = found || found_this;
+        return doesMatch;
       });
     } else {
       for (let sliceLength = 1; sliceLength <= longestKeySequence; sliceLength++) {
         const slice = keys.slice(-sliceLength);
-        const result = _.find(this._remappings, map => map.before.join('') === slice.join(''));
+        const result = _.find(this._remappings, map => {
+          const [found_this, doesMatch] = this._doesMatch(map, slice);
+          found = found || found_this;
+          return doesMatch;
+        });
 
         if (result) {
           remapping = result;
@@ -147,7 +167,8 @@ class Remapper implements IRemapper {
       }
 
       vimState.isCurrentlyPerformingRemapping = false;
-      return true;
+      assert(found, '`found` must be true here.');
+      return { found: true, handled: true };
     }
 
     // Check to see if a remapping could potentially be applied when more keys are received
@@ -158,7 +179,26 @@ class Remapper implements IRemapper {
       }
     }
 
-    return false;
+    // if remapping !== undefined, we definitely 'processed' that remapping.
+    // if we return false here, it is treated as no matching remapping found and
+    // do normal work
+    return { found: found, handled: false };
+  }
+
+  // returns [found, doesMatch]
+  private _doesMatch(map: IKeyRemapping, keys: string[]): [boolean, boolean] {
+    if (map.before.join('') === keys.join('')) {
+      return [true, !this._isDisabledRemapping(map)];
+    } else {
+      return [false, false];
+    }
+  }
+
+  private _isDisabledRemapping(remapping: IKeyRemapping) {
+    return (
+      (!remapping.after || remapping.after.length === 0) &&
+      (!remapping.commands || remapping.commands.length === 0)
+    );
   }
 
   private _longestKeySequence(): number {

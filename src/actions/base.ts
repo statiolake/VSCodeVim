@@ -195,7 +195,8 @@ export class Actions {
    */
   public static getRelevantAction(
     keysPressed: string[],
-    vimState: VimState
+    vimState: VimState,
+    ignoreExactMatch: boolean
   ): BaseAction | KeypressState {
     let isPotentialMatch = false;
 
@@ -207,7 +208,7 @@ export class Actions {
         continue;
       }
 
-      if (action.doesActionApply(vimState, keysPressed)) {
+      if (!ignoreExactMatch && action.doesActionApply(vimState, keysPressed)) {
         const result = new type();
         result.keysPressed = vimState.recordedState.actionKeys.slice(0);
         return result;
