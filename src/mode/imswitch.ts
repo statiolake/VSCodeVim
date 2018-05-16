@@ -15,8 +15,10 @@ export class ImSwitcher {
   public modeChanged(prev: ModeName, curr: ModeName) {
     if (prev === ModeName.Insert) {
       this.leaveInsert();
-    } else {
+    } else if (curr === ModeName.Insert) {
       this.enterInsert();
+    } else {
+      // nothing to do.
     }
   }
 
