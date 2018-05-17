@@ -5,11 +5,11 @@ import { ModeName } from './mode';
 
 export class ImSwitcher {
   private _nextInsertImOn: boolean;
-  private _exec: any;
+  private _execSync: any;
 
   constructor() {
     this._nextInsertImOn = false;
-    this._exec = require('child_process').exec;
+    this._execSync = require('child_process').execSync;
   }
 
   public modeChanged(prev: ModeName, curr: ModeName) {
@@ -34,23 +34,20 @@ export class ImSwitcher {
   }
 
   public isIMEOn(): boolean {
-    return this._exec('setime get', (isEnabled: any, out: any, err: any) => {
-      return isEnabled;
-    });
-    // let res = false;
-    // try {
-    //   this._exec('setime get');
-    // } catch (e) {
-    //   res = true;
-    // }
-    // return res;
+    let res = false;
+    try {
+      this._execSync('setime get');
+    } catch (e) {
+      res = true;
+    }
+    return res;
   }
 
   public setIMEOn() {
-    this._exec('setime on');
+    this._execSync('setime on');
   }
 
   public setIMEOff() {
-    this._exec('setime off');
+    this._execSync('setime off');
   }
 }
