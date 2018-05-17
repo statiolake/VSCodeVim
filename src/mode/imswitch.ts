@@ -36,7 +36,7 @@ export class ImSwitcher {
   public isIMEOn(): boolean {
     let res = false;
     try {
-      this._execSync('setime get');
+      this._execSync('ime-remote get');
     } catch (e) {
       res = true;
     }
@@ -44,10 +44,10 @@ export class ImSwitcher {
   }
 
   public setIMEOn() {
-    this._execSync('setime on');
+    this._execSync('ime-remote on');
   }
 
   public setIMEOff() {
-    this._execSync('setime off');
+    this._execSync('ime-remote off');
   }
 }
